@@ -94,15 +94,17 @@ public class Register extends HttpServlet {
     private boolean registerUser(String username, String email, String fullName, String password, String bio) throws Exception {
         Class.forName("com.mysql.cj.jdbc.Driver");
         try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
-            // Note: In production, you should hash the password using BCrypt or similar
+            // Use PBKDF2 to hash the password before storing.
+            String hashed = PasswordUtils.generateSecurePassword(password);
+
             String sql = "INSERT INTO Users (Username, Email, FullName, PasswordHash, Bio) VALUES (?, ?, ?, ?, ?)";
             try (PreparedStatement ps = con.prepareStatement(sql)) {
                 ps.setString(1, username);
                 ps.setString(2, email);
                 ps.setString(3, fullName);
-                ps.setString(4, password); // In production: hash this with BCrypt
+                ps.setString(4, hashed);
                 ps.setString(5, bio);
-                
+
                 int rows = ps.executeUpdate();
                 return rows > 0;
             }

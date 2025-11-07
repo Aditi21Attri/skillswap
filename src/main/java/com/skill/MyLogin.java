@@ -64,17 +64,28 @@ public class MyLogin extends HttpServlet {
 
             // Open connection
             try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
-                String sql = "SELECT UserID, Username, FullName, Email FROM Users WHERE Email = ? AND PasswordHash = ?";
+                // Fetch user by email and verify hashed password server-side
+                String sql = "SELECT UserID, Username, FullName, Email, PasswordHash FROM Users WHERE Email = ?";
                 try (PreparedStatement ps = con.prepareStatement(sql)) {
                     ps.setString(1, email);
-                    ps.setString(2, password);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
-                            userDetails = new UserDetails();
-                            userDetails.setUserId(rs.getInt("UserID"));
-                            userDetails.setUsername(rs.getString("Username"));
-                            userDetails.setFullName(rs.getString("FullName"));
-                            userDetails.setEmail(rs.getString("Email"));
+                            String storedHash = rs.getString("PasswordHash");
+                            boolean ok = false;
+                            try {
+                                ok = PasswordUtils.verifyPassword(password, storedHash);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                                ok = false;
+                            }
+
+                            if (ok) {
+                                userDetails = new UserDetails();
+                                userDetails.setUserId(rs.getInt("UserID"));
+                                userDetails.setUsername(rs.getString("Username"));
+                                userDetails.setFullName(rs.getString("FullName"));
+                                userDetails.setEmail(rs.getString("Email"));
+                            }
                         }
                     }
                 }

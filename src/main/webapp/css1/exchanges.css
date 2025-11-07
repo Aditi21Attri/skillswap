@@ -1,0 +1,365 @@
+/* Exchanges Page Styles */
+.exchanges-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.exchanges-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xl);
+}
+
+.exchange-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-card {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    height: fit-content;
+}
+
+.panel-header {
+    background: var(--gradient-card);
+    padding: var(--spacing-xl);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.panel-header h2 {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+    font-size: 1.25rem;
+}
+
+.panel-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}
+
+.panel-content {
+    padding: var(--spacing-lg);
+}
+
+/* Table Styles for Both Panels */
+.proposals-table,
+.exchanges-table {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+}
+
+.proposals-table table,
+.exchanges-table table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-primary);
+}
+
+.proposals-table th,
+.exchanges-table th {
+    background: var(--bg-muted);
+    padding: var(--spacing-md);
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-light);
+    font-size: 0.875rem;
+}
+
+.proposals-table td,
+.exchanges-table td {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+.proposals-table tbody tr:hover,
+.exchanges-table tbody tr:hover {
+    background-color: var(--bg-secondary);
+    transition: background-color 0.2s ease-in-out;
+}
+
+.proposals-table tbody tr:last-child td,
+.exchanges-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ID Columns */
+.proposal-id,
+.exchange-id {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    display: inline-block;
+    font-size: 0.75rem;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-pending {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.status-accepted {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.status-rejected {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.status-ongoing {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-completed {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.action-buttons .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: var(--radius-sm);
+    min-width: auto;
+}
+
+.action-buttons .btn i {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: var(--text-light);
+}
+
+.btn-success:hover {
+    background-color: #059669;
+    border-color: #059669;
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: var(--text-light);
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+    border-color: #dc2626;
+}
+
+/* Empty States */
+.panel-empty {
+    text-align: center;
+    padding: var(--spacing-2xl);
+    color: var(--text-secondary);
+}
+
+.panel-empty i {
+    font-size: 3rem;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-lg);
+}
+
+.panel-empty h4 {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+    font-size: 1.125rem;
+}
+
+.panel-empty p {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+}
+
+/* Loading States */
+.panel-card.loading {
+    opacity: 0.7;
+}
+
+.panel-card.loading table {
+    pointer-events: none;
+}
+
+/* Success Animations */
+.panel-card.success {
+    animation: successPulse 0.6s ease-in-out;
+}
+
+@keyframes successPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+/* Statistics Summary */
+.exchanges-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.stat-card {
+    background: var(--gradient-card);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-card i {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-sm);
+}
+
+.stat-card .stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+
+.stat-card .stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .exchanges-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    .panel-header h2 {
+        font-size: 1.125rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .exchanges-container {
+        max-width: 100%;
+    }
+    
+    .panel-content {
+        padding: var(--spacing-md);
+    }
+    
+    .panel-header {
+        padding: var(--spacing-lg);
+    }
+    
+    .proposals-table th,
+    .exchanges-table th,
+    .proposals-table td,
+    .exchanges-table td {
+        padding: var(--spacing-sm);
+        font-size: 0.75rem;
+    }
+    
+    /* Stack tables on mobile */
+    .proposals-table table,
+    .exchanges-table table,
+    .proposals-table thead,
+    .exchanges-table thead,
+    .proposals-table tbody,
+    .exchanges-table tbody,
+    .proposals-table th,
+    .exchanges-table th,
+    .proposals-table td,
+    .exchanges-table td,
+    .proposals-table tr,
+    .exchanges-table tr {
+        display: block;
+    }
+    
+    .proposals-table thead tr,
+    .exchanges-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    
+    .proposals-table tr,
+    .exchanges-table tr {
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-md);
+        padding: var(--spacing-md);
+        background: var(--bg-primary);
+    }
+    
+    .proposals-table td,
+    .exchanges-table td {
+        border: none;
+        position: relative;
+        padding: var(--spacing-sm) 0;
+        text-align: left;
+    }
+    
+    .proposals-table td:before,
+    .exchanges-table td:before {
+        content: attr(data-label) ": ";
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+        margin-bottom: var(--spacing-xs);
+    }
+    
+    .action-buttons {
+        justify-content: flex-start;
+        margin-top: var(--spacing-sm);
+    }
+    
+    .exchanges-stats {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+}
+
+@media (max-width: 480px) {
+    .panel-header,
+    .panel-content {
+        padding: var(--spacing-md);
+    }
+    
+    .stat-card {
+        padding: var(--spacing-md);
+    }
+    
+    .stat-card .stat-number {
+        font-size: 1.5rem;
+    }
+}

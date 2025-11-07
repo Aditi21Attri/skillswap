@@ -1,7 +1,44 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
 <%@ page import="java.util.*" %>
+<%!
+    // Simple HTML escaper for embedding values into attribute contexts
+    private String esc(Object o) {
+        if (o == null) return "";
+        String s = o.toString();
+        return s.replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+%>
 <%
+    // Handle 'onlyMatching' filter param and persist to session
+    // Read checkbox values robustly: handle the hidden field + checkbox case by checking all submitted values
+    String[] onlyMatchingValues = request.getParameterValues("onlyMatching");
+    Boolean onlyMatching = null;
+    if (onlyMatchingValues != null) {
+        boolean om = false;
+        for (String v : onlyMatchingValues) {
+            if (v != null && (v.equals("1") || v.equalsIgnoreCase("true"))) {
+                om = true;
+                break;
+            }
+        }
+        session.setAttribute("onlyMatchingRequestsFilter", Boolean.valueOf(om));
+        onlyMatching = Boolean.valueOf(om);
+        // Show a small confirmation message after the user toggles the filter
+        if (om) {
+            request.setAttribute("message", "Filter applied: showing only requests you can do.");
+        } else {
+            request.setAttribute("message", "Filter cleared: showing all requests.");
+        }
+    } else {
+        Object omSess = session.getAttribute("onlyMatchingRequestsFilter");
+        onlyMatching = (omSess instanceof Boolean) ? (Boolean) omSess : Boolean.FALSE;
+    }
+
     // Check if user is logged in
     String userEmail = (String) session.getAttribute("userEmail");
     Integer userId = (Integer) session.getAttribute("userId");
@@ -15,6 +52,31 @@
     String JDBC_USER = "root";
     String JDBC_PASS = "aTTri21..";
     
+    // If the user toggled the filter (we received parameters), persist the preference to DB for this user
+    if (onlyMatchingValues != null) {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            try (Connection prefCon = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
+                // Create preferences table if it doesn't exist (safe, idempotent)
+                String createSql = "CREATE TABLE IF NOT EXISTS UserPreferences (UserID INT PRIMARY KEY, OnlyMatching TINYINT(1))";
+                try (Statement st = prefCon.createStatement()) {
+                    st.executeUpdate(createSql);
+                }
+
+                // Upsert preference for current user
+                String upsert = "INSERT INTO UserPreferences (UserID, OnlyMatching) VALUES (?, ?) ON DUPLICATE KEY UPDATE OnlyMatching = VALUES(OnlyMatching)";
+                try (PreparedStatement psUp = prefCon.prepareStatement(upsert)) {
+                    psUp.setInt(1, userId);
+                    psUp.setInt(2, (onlyMatching != null && onlyMatching) ? 1 : 0);
+                    psUp.executeUpdate();
+                }
+            }
+        } catch (Exception e) {
+            // Don't break the page for preference storage failures; log for debugging
+            e.printStackTrace();
+        }
+    }
+    
     // List to hold queries/requests
     List<Map<String, Object>> queries = new ArrayList<>();
     
@@ -22,16 +84,23 @@
     try {
         Class.forName("com.mysql.cj.jdbc.Driver");
         try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
-            String sql = "SELECT q.QueryID, q.Title, q.Description, q.PostDate, q.Status, " +
-                        "u.Username as RequesterName, u.FullName as RequesterFullName, " +
-                        "s.SkillName " +
-                        "FROM Queries q " +
-                        "JOIN Users u ON q.RequesterID = u.UserID " +
-                        "JOIN Skills s ON q.SkillID = s.SkillID " +
-                        "WHERE q.RequesterID != ? AND q.Status = 'Open' " +
-                        "ORDER BY q.PostDate DESC";
+            StringBuilder sqlBuilder = new StringBuilder();
+            sqlBuilder.append("SELECT q.QueryID, q.Title, q.Description, q.PostDate, q.Status, ")
+                      .append("u.Username as RequesterName, u.FullName as RequesterFullName, ")
+                      .append("s.SkillName, CASE WHEN us.UserID IS NULL THEN 0 ELSE 1 END as hasSkill ")
+                      .append("FROM Queries q ")
+                      .append("JOIN Users u ON q.RequesterID = u.UserID ")
+                      .append("JOIN Skills s ON q.SkillID = s.SkillID ")
+                      .append("LEFT JOIN UserSkills us ON us.SkillID = q.SkillID AND us.UserID = ? ")
+                      .append("WHERE q.RequesterID != ? AND q.Status = 'Open' ");
+            if (onlyMatching != null && onlyMatching) {
+                sqlBuilder.append(" AND us.UserID IS NOT NULL ");
+            }
+            sqlBuilder.append(" ORDER BY q.PostDate DESC");
+            String sql = sqlBuilder.toString();
             try (PreparedStatement ps = con.prepareStatement(sql)) {
-                ps.setInt(1, userId);
+                ps.setInt(1, userId); // for LEFT JOIN user skills
+                ps.setInt(2, userId); // exclude user's own queries
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         Map<String, Object> query = new HashMap<>();
@@ -43,6 +112,7 @@
                         query.put("requesterName", rs.getString("RequesterFullName") != null ? 
                                   rs.getString("RequesterFullName") : rs.getString("RequesterName"));
                         query.put("skillName", rs.getString("SkillName"));
+                        query.put("hasSkill", rs.getInt("hasSkill"));
                         queries.add(query);
                     }
                 }
@@ -131,6 +201,18 @@
                             </div>
                         <% } %>
                         
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                            <div>
+                                <form id="filterForm" method="get" action="browse-requests.jsp" style="display:inline; margin:0; padding:0;">
+                                    <!-- hidden field ensures a value is submitted even when checkbox is unchecked -->
+                                    <input type="hidden" name="onlyMatching" value="0">
+                                    <label style="font-size:14px; color:#333; margin:0;"><input type="checkbox" id="onlyMatching" name="onlyMatching" value="1" style="margin-right:8px;" <%= (onlyMatching != null && onlyMatching) ? "checked" : "" %> onchange="document.getElementById('filterForm').submit()"> Show only requests I can do</label>
+                                </form>
+                            </div>
+                            <div style="font-size:13px; color:#666;">Tip: Click <strong>Send Proposal</strong> to apply.</div>
+                        </div>
+
                         <div class="requests-table">
                             <table>
                                 <thead>
@@ -154,24 +236,26 @@
                                     <% } else {
                                         for (Map<String, Object> query : queries) {
                                     %>
-                                        <tr>
+                                        <tr data-hasmatch="<%= query.get("hasSkill") %>">
                                             <td class="request-id">REQ<%= String.format("%03d", query.get("queryId")) %></td>
                                             <td><strong><%= query.get("title") %></strong></td>
                                             <td><%= query.get("requesterName") %></td>
-                                            <td><span class="skill-badge"><%= query.get("skillName") %></span></td>
+                                            <td>
+                                                <% if (query.get("hasSkill") != null && ((Integer)query.get("hasSkill")) == 1) { %>
+                                                    <span class="skill-match-badge" style="background:#e6ffed;color:#0b6623;padding:4px 8px;border-radius:12px;margin-right:8px;font-weight:600;">You match</span>
+                                                <% } %>
+                                                <span class="skill-badge"><%= query.get("skillName") %></span>
+                                            </td>
                                             <td><%= query.get("description") != null ? query.get("description") : "No description provided" %></td>
                                             <td>
-                                            <button onclick='openProposalModal(
-    <%= query.get("queryId") %>,
-    <%= "\"" + query.get("requesterName").toString().replace("\"", "\\\"") + "\"" %>,
-    <%= "\"" + query.get("title").toString().replace("\"", "\\\"") + "\"" %>,
-    <%= "\"" + query.get("skillName").toString().replace("\"", "\\\"") + "\"" %>
-)'>
-    Send Proposal
-</button>
-                                            
-                                                <button class="btn btn-primary btn-sm" 
-                                                        onclick="openProposalModal(<%= query.get("queryId") %>, '<%= query.get("requesterName") %>', '<%= query.get("title") %>', '<%= query.get("skillName") %>')">
+                                                <!-- Single, safe button that stores values in data- attributes to avoid JS quoting issues -->
+                        <button class="btn btn-primary btn-sm" 
+                            type="button"
+                            data-query-id="<%= esc(query.get("queryId")) %>"
+                            data-requester="<%= esc(query.get("requesterName")) %>"
+                            data-title="<%= esc(query.get("title")) %>"
+                            data-skill="<%= esc(query.get("skillName")) %>"
+                            onclick="openProposalModalFromButton(this)">
                                                     Send Proposal
                                                 </button>
                                             </td>
@@ -226,14 +310,60 @@
             }
         }
 
+        function openProposalModalFromButton(btn) {
+            // Read values from data- attributes (safer than embedding raw strings in onclick)
+            const queryId = btn.getAttribute('data-query-id') || '';
+            const requester = btn.getAttribute('data-requester') || '';
+            const title = btn.getAttribute('data-title') || '';
+            const skill = btn.getAttribute('data-skill') || '';
+
+            // Debug output to the console so you can inspect values in DevTools
+            try { console.log('openProposalModalFromButton', { queryId, requester, title, skill }); } catch(e){}
+
+            openProposalModal(queryId, requester, title, skill);
+        }
+
         function openProposalModal(queryId, requesterName, title, skill) {
-            document.getElementById('proposalModal').style.display = 'flex';
-            document.getElementById('queryId').value = queryId;
-            document.getElementById('requestDetails').innerHTML = `
-                <p><strong>Request:</strong> ${title}</p>
-                <p><strong>Posted by:</strong> ${requesterName}</p>
-                <p><strong>Skill Needed:</strong> ${skill}</p>
-            `;
+            // Defensive fallbacks
+            const q = queryId || '';
+            const r = requesterName || 'Unknown';
+            const t = title || 'Untitled';
+            const s = skill || 'Unknown';
+
+            // Log for debugging
+            try { console.log('openProposalModal called', { queryId: q, requesterName: r, title: t, skill: s }); } catch(e){}
+
+            const modal = document.getElementById('proposalModal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            const qInput = document.getElementById('queryId');
+            if (qInput) qInput.value = q;
+
+            const details = document.getElementById('requestDetails');
+            if (details) {
+                // Build text nodes to avoid accidental HTML parsing issues
+                details.innerHTML = '';
+                const p1 = document.createElement('p');
+                p1.innerHTML = '<strong>Request:</strong> ' + escapeHtml(t);
+                const p2 = document.createElement('p');
+                p2.innerHTML = '<strong>Posted by:</strong> ' + escapeHtml(r);
+                const p3 = document.createElement('p');
+                p3.innerHTML = '<strong>Skill Needed:</strong> ' + escapeHtml(s);
+                details.appendChild(p1);
+                details.appendChild(p2);
+                details.appendChild(p3);
+            }
+        }
+
+        // Small client-side escaper for safe insertion into innerHTML
+        function escapeHtml(unsafe) {
+            if (!unsafe && unsafe !== 0) return '';
+            return String(unsafe)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function closeProposalModal() {
@@ -248,6 +378,43 @@
                 closeProposalModal();
             }
         }
+
+        // Filter rows to show only matching requests when checkbox is toggled
+        (function(){
+            const checkbox = document.getElementById('onlyMatching');
+            if (!checkbox) return;
+
+            function applyFilter() {
+                const showOnly = checkbox.checked;
+                const rows = document.querySelectorAll('#requestsTableBody tr');
+                rows.forEach(r => {
+                    const hasMatch = r.getAttribute('data-hasmatch') === '1';
+                    r.style.display = (showOnly && !hasMatch) ? 'none' : '';
+                });
+            }
+
+            // No client-side persistence: filter state is stored server-side in session.
+            // The checkbox submits the page (GET) and the server sets the session preference.
+            checkbox.addEventListener('change', function(e){
+                // The checkbox is inside a form that submits on change, so no extra client logic needed.
+            });
+
+            // initial
+            applyFilter();
+
+            // Ensure checkbox reliably submits the filter form when toggled (some browsers/HTML setups may ignore onchange)
+            try {
+                const frm = document.getElementById('filterForm');
+                if (frm && checkbox) {
+                    checkbox.addEventListener('click', function(e){
+                        // small delay to let checkbox state update before submitting
+                        setTimeout(() => {
+                            try { frm.submit(); } catch (ex) { console.log('Filter submit failed', ex); }
+                        }, 10);
+                    });
+                }
+            } catch (e) { console.log('attach submit handler failed', e); }
+        })();
     </script>
 </body>
 </html>
