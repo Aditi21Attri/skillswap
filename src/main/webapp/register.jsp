@@ -14,6 +14,16 @@
 </head>
 <body>
 <div class="register-container">
+    <!-- Small illustration block (desktop-only) to match login visuals -->
+    <div class="auth-illustration" style="margin-bottom:18px; max-width:720px; margin-left:auto; margin-right:auto;">
+        <div class="ill-content">
+            <div style="text-align:center; width:100%;">
+                <i class="fas fa-users-cog" style="font-size:48px;color:rgba(15,23,42,0.85);margin-bottom:8px"></i>
+                <div style="font-weight:600; color:rgba(15,23,42,0.9)">Join the community</div>
+                <div style="color:rgba(15,23,42,0.65); font-size:0.9rem">Create an account to exchange skills and grow together.</div>
+            </div>
+        </div>
+    </div>
     <h1><i class="fas fa-user-plus"></i> Sign Up</h1>
     <p class="subtitle">Join XpertiseXchange to learn & share your skills!</p>
 

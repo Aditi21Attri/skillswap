@@ -12,10 +12,9 @@
 <body>
     <div class="auth-container">
         <div class="auth-card">
-        
-			<i class="fa-solid fa-user-circle platform-icon"></i>
-        
+
             <div class="auth-header">
+                <i class="fa-solid fa-user-circle platform-icon"></i>
                 <h1 class="platform-title">Skill Exchange Platform</h1>
                 <p class="platform-subtitle">Connect, Learn, and Grow Together</p>
             </div>
@@ -61,6 +60,16 @@
                         <button type="button" class="btn btn-outline" onclick="handleRegister()">Register</button>
                     </div>
                 </form>
+            </div>
+            <!-- Right-side illustration / visual accent -->
+            <div class="auth-illustration">
+                <div class="ill-content">
+                    <div style="text-align:center">
+                        <i class="fas fa-handshake" style="font-size:56px;color:rgba(15,23,42,0.85);margin-bottom:12px"></i>
+                        <h3 style="margin:0;font-size:1.1rem;color:rgba(15,23,42,0.9)">Share skills. Build connections.</h3>
+                        <p style="margin-top:8px;color:rgba(15,23,42,0.65);font-size:0.9rem">Post requests, propose trades, and learn from others in your community.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
