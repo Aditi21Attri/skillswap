@@ -1,6 +1,6 @@
 # SkillSwap (Skill Exchange Platform)
 
- A small Java Servlet + JSP web application for exchanging skills between users. Users can post requests for help, browse requests, propose trades, accept/reject bids, and manage their skills and profile.
+A small Java Servlet + JSP web application for exchanging skills between users. Users can post requests for help, browse requests, propose trades, accept/reject bids, message other participants, and manage their skills and profile.
 
 ---
 
@@ -26,16 +26,18 @@ SkillSwap is a lightweight skill-exchange platform built with Java Servlets, JSP
 
 This repository contains server-side servlet controllers, JSP views, static assets (CSS/JS), and SQL-related code via JDBC.
 
-## Features
+## Features (working / implemented)
 
-- User registration and authentication (email-based login)
-- Passwords stored using PBKDF2 hashing (secure password storage)
-- Post skill requests (title, description, required skill)
-- Browse requests with an indicator for requests the current user can fulfill (matching skill)
-- Submit proposals/bids to fulfill requests (server-side enforcement that provider has the skill)
-- Accept / reject bids and complete transactions
-- Manage personal skills and profile
-- Persist user preference: "Show only requests I can do"
+- **User accounts:** registration and login with secure password storage (PBKDF2). Passwords are hashed by `PasswordUtils.java`.
+- **Requests and bids:** post requests, browse requests, submit bids. Server-side validation prevents providers from bidding unless they own the offered skill (unless volunteering).
+- **Browse UI improvements:** safer modal population via data-attributes, hidden mirror inputs to submit disabled selects, and persistent "only matching" filter.
+- **Received/Exchanges UI:** `exchanges.jsp` and `my-requests.jsp` show requested/wanted skill names and provider links to `profile?id=...`.
+- **Messaging / Conversations:** message threads per transaction implemented:
+  - `Messages` table migration included (`migrations/004-create-messages.sql`).
+  - `messages.jsp` lists active conversations.
+  - `messages-thread.jsp` shows the conversation and composer.
+  - Server-side API: `com.skill.MessageDAO` and `com.skill.SendMessage` servlet (authorization checks ensure only participants may view/post).
+- **Database migrations:** migrations for `WantedSkillID` and `Volunteer` columns in `Bids` and the `Messages` table are included in `migrations/`.
 
 ## Architecture & file map (high-level)
 
@@ -151,6 +153,127 @@ CREATE TABLE IF NOT EXISTS UserPreferences (
 ```
 
 Be sure your `Users` table has a `PasswordHash` column for the PBKDF2 hashes.
+
+## Current database structure (exported from MySQL)
+
+Below is the current schema as seen on your development MySQL instance (column lists were produced with `SHOW COLUMNS FROM <table>` and `SHOW TABLES`).
+
+Tables present:
+
+```
+Tables_in_skillexchange
+-------------------------
+bids
+messages
+queries
+ratingsandreviews
+skills
+transactions
+userpreferences
+users
+userskills
+```
+
+Detailed columns for key tables:
+
+`Transactions`:
+```
+TransactionID   int NOT NULL PRIMARY KEY AUTO_INCREMENT
+QueryID         int NOT NULL
+ProviderID      int NOT NULL
+RequesterID     int NOT NULL
+ProviderSkillID int NOT NULL
+ExchangeType    enum('Free','Barter') DEFAULT 'Free'
+BarterSkillID   int NULL
+StartDate       datetime DEFAULT CURRENT_TIMESTAMP
+EndDate         datetime NULL
+Status          enum('Ongoing','Completed') DEFAULT 'Ongoing'
+```
+
+`Users`:
+```
+UserID         int NOT NULL PRIMARY KEY AUTO_INCREMENT
+Username       varchar(100) NOT NULL UNIQUE
+PasswordHash   varchar(255) NOT NULL
+Email          varchar(150) NOT NULL UNIQUE
+FullName       varchar(150) NOT NULL
+Bio            text NULL
+JoinDate       datetime DEFAULT CURRENT_TIMESTAMP
+whatsapp_phone varchar(20) NULL
+```
+
+`Messages` (newly added):
+```
+MessageID           bigint unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT
+TransactionID       int NOT NULL
+SenderID            int NOT NULL
+Content             text NOT NULL
+SentAt              datetime DEFAULT CURRENT_TIMESTAMP
+IsRead              tinyint(1) NOT NULL DEFAULT 0
+DeletedForSender    tinyint(1) NOT NULL DEFAULT 0
+DeletedForRecipient tinyint(1) NOT NULL DEFAULT 0
+```
+
+`Bids`:
+```
+BidID            int NOT NULL PRIMARY KEY AUTO_INCREMENT
+QueryID          int NOT NULL
+ProviderID       int NOT NULL
+RequestedSkillID int NULL
+OfferedSkillID   int NULL
+BidDetails       text NULL
+BidDate          datetime DEFAULT CURRENT_TIMESTAMP
+Status           enum('Pending','Accepted','Rejected') DEFAULT 'Pending'
+WantedSkillID    int NULL
+Volunteer        tinyint(1) NOT NULL DEFAULT 0
+```
+
+`Queries` (requests):
+```
+QueryID     int NOT NULL PRIMARY KEY AUTO_INCREMENT
+RequesterID int NOT NULL
+Title       varchar(255) NOT NULL
+Description text NULL
+SkillID     int NOT NULL
+PostDate    datetime DEFAULT CURRENT_TIMESTAMP
+Status      enum('Open','In Progress','Completed') DEFAULT 'Open'
+```
+
+`UserSkills` (mapping):
+```
+UserSkillID int NOT NULL PRIMARY KEY AUTO_INCREMENT
+UserID      int NOT NULL
+SkillID     int NOT NULL
+```
+
+Other tables present but not fully listed here: `ratingsandreviews`, `skills`, `userpreferences`.
+Use `SHOW COLUMNS FROM <table>;` in your MySQL client to view full column lists.
+
+Added: column listings for the remaining tables (copied from your MySQL output):
+
+`skills`:
+```
+SkillID   int NOT NULL PRIMARY KEY AUTO_INCREMENT
+SkillName varchar(100) NOT NULL UNIQUE
+```
+
+`ratingsandreviews`:
+```
+ReviewID       int NOT NULL PRIMARY KEY AUTO_INCREMENT
+TransactionID  int NOT NULL
+ReviewerID     int NOT NULL
+ReviewedUserID int NOT NULL
+Rating         int NULL
+Comment        text NULL
+ReviewDate     datetime DEFAULT CURRENT_TIMESTAMP
+```
+
+`userpreferences`:
+```
+UserID       int NOT NULL PRIMARY KEY
+OnlyMatching tinyint(1) NULL
+```
+
 
 ## Security notes
 
