@@ -48,7 +48,7 @@
         <!-- Navigation Tabs -->
         <nav class="tab-navigation">
             <div class="tab-list">
-                <a href="profile.jsp" class="tab-trigger" data-tab="profile">
+                <a href="myProfile.jsp" class="tab-trigger" data-tab="profile">
                     <i class="fas fa-user"></i>
                     Profile
                 </a>
@@ -63,6 +63,14 @@
                 <a href="exchanges.jsp" class="tab-trigger" data-tab="exchanges">
                     <i class="fas fa-exchange-alt"></i>
                     Exchanges
+                </a>
+                <a href="my-requests" class="tab-trigger" data-tab="my-requests">
+                    <i class="fas fa-list"></i>
+                    My Requests
+                </a>
+                <a href="active-swaps" class="tab-trigger" data-tab="active-swaps">
+                    <i class="fas fa-bolt"></i>
+                    Active Swaps
                 </a>
                 <a href="messages.jsp" class="tab-trigger" data-tab="messages">
                     <i class="fas fa-comments"></i>

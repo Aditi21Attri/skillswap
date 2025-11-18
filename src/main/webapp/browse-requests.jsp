@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
 <%@ page import="java.util.*" %>
+<%@ page import="com.skill.SkillDAO" %>
 <%!
     // Simple HTML escaper for embedding values into attribute contexts
     private String esc(Object o) {
@@ -12,6 +13,7 @@
                 .replace("<", "&lt;")
                 .replace(">", "&gt;");
     }
+
 %>
 <%
     // Handle 'onlyMatching' filter param and persist to session
@@ -86,7 +88,7 @@
         try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
             StringBuilder sqlBuilder = new StringBuilder();
             sqlBuilder.append("SELECT q.QueryID, q.Title, q.Description, q.PostDate, q.Status, ")
-                      .append("u.Username as RequesterName, u.FullName as RequesterFullName, ")
+                      .append("u.UserID as RequesterID, u.Username as RequesterName, u.FullName as RequesterFullName, ")
                       .append("s.SkillName, CASE WHEN us.UserID IS NULL THEN 0 ELSE 1 END as hasSkill ")
                       .append("FROM Queries q ")
                       .append("JOIN Users u ON q.RequesterID = u.UserID ")
@@ -109,6 +111,7 @@
                         query.put("description", rs.getString("Description"));
                         query.put("postDate", rs.getString("PostDate"));
                         query.put("status", rs.getString("Status"));
+                        query.put("requesterId", rs.getInt("RequesterID"));
                         query.put("requesterName", rs.getString("RequesterFullName") != null ? 
                                   rs.getString("RequesterFullName") : rs.getString("RequesterName"));
                         query.put("skillName", rs.getString("SkillName"));
@@ -153,7 +156,7 @@
                     <i class="fas fa-home"></i>
                     Dashboard
                 </a>
-                <a href="profile.jsp" class="tab-trigger" data-tab="profile">
+                <a href="myProfile.jsp" class="tab-trigger" data-tab="profile">
                     <i class="fas fa-user"></i>
                     Profile
                 </a>
@@ -239,7 +242,9 @@
                                         <tr data-hasmatch="<%= query.get("hasSkill") %>">
                                             <td class="request-id">REQ<%= String.format("%03d", query.get("queryId")) %></td>
                                             <td><strong><%= query.get("title") %></strong></td>
-                                            <td><%= query.get("requesterName") %></td>
+                                            <td>
+                                                <a href="profile?id=<%= query.get("requesterId") %>"><%= query.get("requesterName") %></a>
+                                            </td>
                                             <td>
                                                 <% if (query.get("hasSkill") != null && ((Integer)query.get("hasSkill")) == 1) { %>
                                                     <span class="skill-match-badge" style="background:#e6ffed;color:#0b6623;padding:4px 8px;border-radius:12px;margin-right:8px;font-weight:600;">You match</span>
@@ -278,7 +283,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Send Proposal</h3>
-                <p class="modal-description">Send a bid for this skill exchange request</p>
+                <p class="modal-description">Send a proposal for this skill exchange request</p>
                 <button class="modal-close" onclick="closeProposalModal()">
                     <i class="fas fa-times"></i>
                 </button>
@@ -290,7 +295,7 @@
                 <form action="SubmitBid" method="post" id="proposalForm" class="modal-form">
                     <input type="hidden" id="queryId" name="queryId" value="">
                     <div class="form-group">
-                        <label for="bidDetails">Your Bid Details</label>
+                        <label for="bidDetails">Your Proposal Details</label>
                         <textarea id="bidDetails" name="bidDetails" rows="4" placeholder="Describe your proposal and how you can help..." required></textarea>
                     </div>
                     <div class="modal-footer">

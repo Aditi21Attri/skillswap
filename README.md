@@ -87,6 +87,16 @@ The application routes requests from forms and AJAX to servlets in `com.skill` (
   - Creates a new query/request (title, description, skill id/name, requester id).
 - `SubmitBid` (POST)
   - Provider proposes to fulfill a query. Server checks that the provider has the required skill and prevents duplicates.
+- `ViewProfileServlet` (GET `/profile?id=`)
+  - Shows a user's profile page including public info and list of skills. `profile.jsp` displays the details and a small form to request a swap.
+- `CreateBidServlet` (POST `/bid/create`)
+  - Creates a bid with optional requested/offered skill IDs and a volunteer flag. Validates ownership of offered skill and prevents duplicate bids.
+- `MyRequestsServlet` (GET `/my-requests`)
+  - Shows requests posted by the logged-in user along with incoming bids. `myRequests.jsp` lists requests and incoming bids with provider links.
+- `ActiveSwapsServlet` (GET `/active-swaps`)
+  - Shows bids the logged-in user has created (provider view). `activeSwaps.jsp` lists current bids and statuses.
+- `UpdateBidServlet` (POST `/bid/update`)
+  - Allows providers to update their offered skill or toggle volunteer on an existing bid.
 - `AcceptBid`, `RejectBid` (POST)
   - Request owner can accept or reject bids; acceptance may trigger completing the exchange flow.
 - `AddSkill`, `DeleteSkill` (POST)

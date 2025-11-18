@@ -125,7 +125,7 @@
                     <i class="fas fa-home"></i>
                     Dashboard
                 </a>
-                <a href="profile.jsp" class="tab-trigger" data-tab="profile">
+                <a href="myProfile.jsp" class="tab-trigger" data-tab="profile">
                     <i class="fas fa-user"></i>
                     Profile
                 </a>
