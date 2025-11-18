@@ -126,6 +126,13 @@
 </head>
 <body>
 
+    <div style="max-width:1080px;margin:20px auto 0;padding:0 18px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <a href="messages.jsp" class="btn-profile">←</a>
+            <button type="button" class="btn" onclick="history.back();">Back</button>
+        </div>
+    </div>
+
 <%
     SkillDAO.UserProfile profile = (SkillDAO.UserProfile) request.getAttribute("profile");
     List<SkillDAO.Skill> skills = (List<SkillDAO.Skill>) request.getAttribute("skills");

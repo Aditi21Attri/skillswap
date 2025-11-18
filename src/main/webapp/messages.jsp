@@ -71,7 +71,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Messages - Active Exchanges</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/messages.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .convo-list { max-width: 1000px; margin: 28px auto; }
         .convo-card { display:flex; gap:14px; align-items:center; padding:14px; background:#fff; border:1px solid #e6e6e6; border-radius:8px; margin-bottom:12px; }
@@ -85,7 +87,18 @@
     </style>
 </head>
 <body>
-    <div class="convo-list">
+    <%-- Header and nav to match site design --%>
+    <div class="dashboard-container">
+        <% request.setAttribute("pageSubtitle", "Messages"); %>
+        <jsp:include page="/_header.jsp" />
+
+        <main class="dashboard-main">
+            <% request.setAttribute("activeTab", "messages"); %>
+            <jsp:include page="/_nav.jsp" />
+
+        
+
+        <div class="convo-list">
         <h2>Active Conversations</h2>
         <p class="meta">These are your active exchanges. Click "Open" to view the conversation.</p>
 
@@ -110,6 +123,16 @@
                 </div>
             <% } %>
         <% } %>
+        </div>
+        </main>
     </div>
+
+    <script>
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = 'logout.jsp';
+            }
+        }
+    </script>
 </body>
 </html>
