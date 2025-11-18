@@ -64,10 +64,10 @@
                     <i class="fas fa-exchange-alt"></i>
                     Exchanges
                 </a>
-                <a href="my-requests" class="tab-trigger" data-tab="my-requests">
+                <!--  <a href="my-requests" class="tab-trigger" data-tab="my-requests">
                     <i class="fas fa-list"></i>
                     My Requests
-                </a>
+                </a>-->
                 <!-- <a href="active-swaps" class="tab-trigger" data-tab="active-swaps">
                     <i class="fas fa-bolt"></i>
                     Active Swaps

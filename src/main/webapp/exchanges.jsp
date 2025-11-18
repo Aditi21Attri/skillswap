@@ -157,10 +157,10 @@
                     <i class="fas fa-search"></i>
                     Browse Requests
                 </a>
-                <a href="exchanges.jsp" class="tab-trigger active" data-tab="exchanges">
+                <!--<a href="exchanges.jsp" class="tab-trigger active" data-tab="exchanges">
                     <i class="fas fa-exchange-alt"></i>
                     Exchanges
-                </a>
+                </a>-->
                 <a href="messages.jsp" class="tab-trigger" data-tab="messages">
                     <i class="fas fa-comments"></i>
                     Messages

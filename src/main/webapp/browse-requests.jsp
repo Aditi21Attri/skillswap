@@ -216,10 +216,10 @@
                     <i class="fas fa-book-open"></i>
                     My Skills
                 </a>
-                <a href="browse-requests.jsp" class="tab-trigger active" data-tab="browse-requests">
+                <!-- <a href="browse-requests.jsp" class="tab-trigger active" data-tab="browse-requests">
                     <i class="fas fa-search"></i>
                     Browse Requests
-                </a>
+                </a>-->
                 <a href="exchanges.jsp" class="tab-trigger" data-tab="exchanges">
                     <i class="fas fa-exchange-alt"></i>
                     Exchanges

@@ -78,10 +78,10 @@
                     <i class="fas fa-user"></i>
                     Profile
                 </a>
-                <a href="my-skills.jsp" class="tab-trigger active" data-tab="my-skills">
+                <!-- <a href="my-skills.jsp" class="tab-trigger active" data-tab="my-skills">
                     <i class="fas fa-book-open"></i>
                     My Skills
-                </a>
+                </a>-->
                 <a href="browse-requests.jsp" class="tab-trigger" data-tab="browse-requests">
                     <i class="fas fa-search"></i>
                     Browse Requests

@@ -72,10 +72,10 @@
                     <i class="fas fa-home"></i>
                     Dashboard
                 </a>
-                <a href="myProfile.jsp" class="tab-trigger active" data-tab="profile">
+                <!-- <a href="myProfile.jsp" class="tab-trigger active" data-tab="profile">
                     <i class="fas fa-user"></i>
                     Profile
-                </a>
+                </a>-->
                 <a href="my-skills.jsp" class="tab-trigger" data-tab="my-skills">
                     <i class="fas fa-book-open"></i>
                     My Skills
