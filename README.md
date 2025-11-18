@@ -118,30 +118,6 @@ jdbc:mysql://localhost:3306/skillexchange
 
 Known / expected tables and important columns (please adapt as necessary in your DB):
 
-- `Users`
-  - `UserID` (INT PRIMARY KEY AUTO_INCREMENT)
-  - `Username` (VARCHAR)
-  - `Email` (VARCHAR, UNIQUE)
-  - `PasswordHash` (VARCHAR) — stores PBKDF2 hashed password as iterations:salt:hash base64
-  - `FullName`, `Bio`, other profile fields
-
-- `Queries` (or `Requests`)
-  - `QueryID` (INT PK)
-  - `Title`, `Description`
-  - `RequesterID` (FK -> Users.UserID)
-  - `SkillID` or `SkillName` (the required skill)
-  - `Status` (e.g., OPEN, ASSIGNED, COMPLETED)
-
-- `Bids`
-  - `BidID`, `QueryID`, `ProviderID`, `Message`, `Status` (PENDING/ACCEPTED/REJECTED)
-
-- `UserSkills`
-  - mapping table: `UserID`, `SkillID` (or SkillName)
-
-- `UserPreferences` (added by the app if missing)
-  - `UserID` INT PRIMARY KEY
-  - `OnlyMatching` TINYINT(1) — whether user prefers to see only requests they can do
-
 Example SQL (create the preferences table):
 
 ```sql
