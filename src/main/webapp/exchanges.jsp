@@ -1,6 +1,19 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
 <%@ page import="java.util.*" %>
+<%!
+    // Simple HTML escaper for embedding values into attribute contexts
+    private String esc(Object o) {
+        if (o == null) return "";
+        String s = o.toString();
+        return s.replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
+%>
 <%
     // Check if user is logged in
     String userEmail = (String) session.getAttribute("userEmail");
@@ -23,12 +36,15 @@
     try {
         Class.forName("com.mysql.cj.jdbc.Driver");
         try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
-            String bidsSql = "SELECT b.BidID, b.BidDetails, b.Status, b.BidDate, " +
-                            "u.Username as ProviderName, u.FullName as ProviderFullName, " +
-                            "q.Title as QueryTitle, q.QueryID " +
+            String bidsSql = "SELECT b.BidID, b.BidDetails, b.Status, b.BidDate, b.RequestedSkillID, b.WantedSkillID, b.OfferedSkillID, b.Volunteer, " +
+                            "u.UserID AS ProviderID, u.Username as ProviderName, u.FullName as ProviderFullName, " +
+                            "q.Title as QueryTitle, q.QueryID, sReq.SkillName AS RequestedSkillName, sWant.SkillName AS WantedSkillName, sOff.SkillName AS OfferedSkillName " +
                             "FROM Bids b " +
                             "JOIN Queries q ON b.QueryID = q.QueryID " +
                             "JOIN Users u ON b.ProviderID = u.UserID " +
+                            "LEFT JOIN Skills sReq ON b.RequestedSkillID = sReq.SkillID " +
+                            "LEFT JOIN Skills sWant ON b.WantedSkillID = sWant.SkillID " +
+                            "LEFT JOIN Skills sOff ON b.OfferedSkillID = sOff.SkillID " +
                             "WHERE q.RequesterID = ? AND b.Status = 'Pending' " +
                             "ORDER BY b.BidDate DESC";
             try (PreparedStatement ps = con.prepareStatement(bidsSql)) {
@@ -42,8 +58,12 @@
                         bid.put("bidDate", rs.getString("BidDate"));
                         bid.put("queryTitle", rs.getString("QueryTitle"));
                         bid.put("queryId", rs.getInt("QueryID"));
-                        bid.put("providerName", rs.getString("ProviderFullName") != null ? 
-                                rs.getString("ProviderFullName") : rs.getString("ProviderName"));
+                        bid.put("providerId", rs.getInt("ProviderID"));
+                        bid.put("providerName", rs.getString("ProviderFullName") != null ? rs.getString("ProviderFullName") : rs.getString("ProviderName"));
+                        bid.put("requestedSkillName", rs.getString("RequestedSkillName"));
+                        bid.put("wantedSkillName", rs.getString("WantedSkillName"));
+                        bid.put("offeredSkillName", rs.getString("OfferedSkillName"));
+                        bid.put("volunteer", rs.getBoolean("Volunteer"));
                         receivedBids.add(bid);
                     }
                 }
@@ -182,6 +202,8 @@
                                             <tr>
                                                 <th>Bid ID</th>
                                                 <th>Request</th>
+                                                <th>Requested Skill</th>
+                                                <th>Wanted Skill</th>
                                                 <th>From User</th>
                                                 <th>Bid Details</th>
                                                 <th>Actions</th>
@@ -200,10 +222,12 @@
                                             %>
                                                 <tr>
                                                     <td class="proposal-id">BID<%= String.format("%03d", bid.get("bidId")) %></td>
-                                                    <td><strong><%= bid.get("queryTitle") %></strong></td>
-                                                    <td><%= bid.get("providerName") %></td>
+                                                    <td><strong><%= esc(bid.get("queryTitle")) %></strong></td>
+                                                    <td><%= esc(bid.get("requestedSkillName") != null ? bid.get("requestedSkillName") : "-") %></td>
+                                                    <td><%= esc(bid.get("wantedSkillName") != null ? bid.get("wantedSkillName") : "-") %></td>
+                                                    <td><a href="profile?id=<%= bid.get("providerId") %>"><%= esc(bid.get("providerName")) %></a></td>
                                                     <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                        <%= bid.get("bidDetails") %>
+                                                        <%= esc(bid.get("bidDetails")) %>
                                                     </td>
                                                     <td>
                                                         <div class="action-buttons">

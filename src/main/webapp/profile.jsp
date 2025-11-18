@@ -137,6 +137,18 @@
         try { sessionUserId = Integer.parseInt(uidObj.toString()); } catch (Exception ignored) {}
     }
 
+    // If no profile was found by the servlet/DAO, show a friendly message and stop rendering.
+    if (profile == null) {
+%>
+    <div style="max-width:800px;margin:40px auto;padding:20px;background:#fff;border:1px solid #e6e6e6;border-radius:8px;">
+        <h2>User not found</h2>
+        <p>The requested user profile could not be found. It may have been removed or the link is invalid.</p>
+        <p><a href="index.jsp">Return to homepage</a></p>
+    </div>
+<%
+        return;
+    }
+
     String initials = "U";
     if (profile != null && profile.getFullName() != null) {
         String[] parts = profile.getFullName().trim().split(" ");

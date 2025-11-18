@@ -87,14 +87,14 @@
         Class.forName("com.mysql.cj.jdbc.Driver");
         try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
             StringBuilder sqlBuilder = new StringBuilder();
-            sqlBuilder.append("SELECT q.QueryID, q.Title, q.Description, q.PostDate, q.Status, ")
+            sqlBuilder.append("SELECT q.QueryID, q.Title, q.Description, q.PostDate, q.Status, q.SkillID, ")
                       .append("u.UserID as RequesterID, u.Username as RequesterName, u.FullName as RequesterFullName, ")
                       .append("s.SkillName, CASE WHEN us.UserID IS NULL THEN 0 ELSE 1 END as hasSkill ")
                       .append("FROM Queries q ")
                       .append("JOIN Users u ON q.RequesterID = u.UserID ")
                       .append("JOIN Skills s ON q.SkillID = s.SkillID ")
                       .append("LEFT JOIN UserSkills us ON us.SkillID = q.SkillID AND us.UserID = ? ")
-                      .append("WHERE q.RequesterID != ? AND q.Status = 'Open' ");
+                      .append("WHERE q.RequesterID != ? AND UPPER(TRIM(q.Status)) = 'OPEN' ");
             if (onlyMatching != null && onlyMatching) {
                 sqlBuilder.append(" AND us.UserID IS NOT NULL ");
             }
@@ -114,8 +114,36 @@
                         query.put("requesterId", rs.getInt("RequesterID"));
                         query.put("requesterName", rs.getString("RequesterFullName") != null ? 
                                   rs.getString("RequesterFullName") : rs.getString("RequesterName"));
+                        query.put("skillId", rs.getObject("SkillID"));
                         query.put("skillName", rs.getString("SkillName"));
                         query.put("hasSkill", rs.getInt("hasSkill"));
+                        // Fetch poster's skills for this requester to populate poster-skills select
+                        String posterIds = "";
+                        String posterNames = "";
+                        try (PreparedStatement psPoster = con.prepareStatement("SELECT s.SkillID, s.SkillName FROM UserSkills us JOIN Skills s ON us.SkillID = s.SkillID WHERE us.UserID = ?")) {
+                            psPoster.setInt(1, rs.getInt("RequesterID"));
+                            try (ResultSet rsPoster = psPoster.executeQuery()) {
+                                StringBuilder pid = new StringBuilder();
+                                StringBuilder pnm = new StringBuilder();
+                                boolean first = true;
+                                while (rsPoster.next()) {
+                                    if (!first) {
+                                        pid.append(",");
+                                        pnm.append("||");
+                                    }
+                                    pid.append(rsPoster.getInt("SkillID"));
+                                    pnm.append(rsPoster.getString("SkillName"));
+                                    first = false;
+                                }
+                                posterIds = pid.toString();
+                                posterNames = pnm.toString();
+                            }
+                        } catch (Exception pe) {
+                            // ignore poster skill fetch errors
+                            pe.printStackTrace();
+                        }
+                        query.put("posterSkillIds", posterIds);
+                        query.put("posterSkillNames", posterNames);
                         queries.add(query);
                     }
                 }
@@ -124,6 +152,30 @@
     } catch (Exception e) {
         e.printStackTrace();
     }
+
+    // Fetch logged-in user's skills to populate offered-skill dropdown
+    String mySkillsOptions = "";
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
+            String msSql = "SELECT s.SkillID, s.SkillName FROM UserSkills us JOIN Skills s ON us.SkillID = s.SkillID WHERE us.UserID = ?";
+            try (PreparedStatement ps = con.prepareStatement(msSql)) {
+                ps.setInt(1, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    StringBuilder sb = new StringBuilder();
+                    while (rs.next()) {
+                        sb.append("<option value=\"").append(rs.getInt("SkillID")).append("\">")
+                          .append(esc(rs.getString("SkillName"))).append("</option>");
+                    }
+                    mySkillsOptions = sb.toString();
+                }
+            }
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -204,6 +256,7 @@
                             </div>
                         <% } %>
                         
+                        
 
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                             <div>
@@ -239,19 +292,19 @@
                                     <% } else {
                                         for (Map<String, Object> query : queries) {
                                     %>
-                                        <tr data-hasmatch="<%= query.get("hasSkill") %>">
-                                            <td class="request-id">REQ<%= String.format("%03d", query.get("queryId")) %></td>
-                                            <td><strong><%= query.get("title") %></strong></td>
+                                        <tr data-hasmatch="<%= esc(query.get("hasSkill")) %>">
+                                            <td class="request-id">REQ<%= String.format("%03d", ((Number)query.get("queryId")).intValue()) %></td>
+                                            <td><strong><%= esc(query.get("title")) %></strong></td>
                                             <td>
-                                                <a href="profile?id=<%= query.get("requesterId") %>"><%= query.get("requesterName") %></a>
+                                                <a href="profile?id=<%= esc(query.get("requesterId")) %>"><%= esc(query.get("requesterName")) %></a>
                                             </td>
                                             <td>
                                                 <% if (query.get("hasSkill") != null && ((Integer)query.get("hasSkill")) == 1) { %>
                                                     <span class="skill-match-badge" style="background:#e6ffed;color:#0b6623;padding:4px 8px;border-radius:12px;margin-right:8px;font-weight:600;">You match</span>
                                                 <% } %>
-                                                <span class="skill-badge"><%= query.get("skillName") %></span>
+                                                <span class="skill-badge"><%= esc(query.get("skillName")) %></span>
                                             </td>
-                                            <td><%= query.get("description") != null ? query.get("description") : "No description provided" %></td>
+                                            <td><%= esc(query.get("description") != null ? query.get("description") : "No description provided") %></td>
                                             <td>
                                                 <!-- Single, safe button that stores values in data- attributes to avoid JS quoting issues -->
                         <button class="btn btn-primary btn-sm" 
@@ -260,9 +313,26 @@
                             data-requester="<%= esc(query.get("requesterName")) %>"
                             data-title="<%= esc(query.get("title")) %>"
                             data-skill="<%= esc(query.get("skillName")) %>"
+                            data-skill-id="<%= esc(query.get("skillId")) %>"
                             onclick="openProposalModalFromButton(this)">
                                                     Send Proposal
                                                 </button>
+                                                <!-- Hidden poster skills select for this row -->
+                                                <select class="poster-skills" data-query-id="<%= esc(query.get("queryId")) %>" style="display:none;">
+                                                <% String pIds = (String) query.get("posterSkillIds");
+                                                   String pNames = (String) query.get("posterSkillNames");
+                                                   if (pIds != null && !pIds.isEmpty()) {
+                                                       String[] ids = pIds.split(",");
+                                                       String[] names = pNames != null ? pNames.split("\\|\\|") : new String[ids.length];
+                                                       for (int i=0;i<ids.length;i++) {
+                                                           String id = ids[i];
+                                                           String nm = (names.length>i && names[i]!=null) ? names[i] : "";
+                                                %>
+                                                    <option value="<%= id %>"><%= esc(nm) %></option>
+                                                <%     }
+                                                   }
+                                                %>
+                                                </select>
                                             </td>
                                         </tr>
                                     <% 
@@ -294,6 +364,24 @@
                 </div>
                 <form action="SubmitBid" method="post" id="proposalForm" class="modal-form">
                     <input type="hidden" id="queryId" name="queryId" value="">
+                    <input type="hidden" id="wantedSkillHidden" name="wantedSkillId" value="">
+                    <div class="form-group">
+                        <label for="modalRequestedSkill">Requested Skill</label>
+                        <select id="modalRequestedSkill" name="requestedSkillId" required>
+                            <option value="">-- skill --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="modalWantSkill">Skill You Want From Requester (optional)</label>
+                        <select id="modalWantSkill">
+                            <option value="">-- choose skill you want from requester (or volunteer) --</option>
+                        </select>
+                    </div>
+                    <!-- Removed offered-skill select: UI records what you want from requester and you can volunteer -->
+                    <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="modalVolunteer" name="isVolunteer" value="1" onchange="onModalVolunteerToggle(this)">
+                        <label for="modalVolunteer">I want to volunteer (no skill requested in exchange)</label>
+                    </div>
                     <div class="form-group">
                         <label for="bidDetails">Your Proposal Details</label>
                         <textarea id="bidDetails" name="bidDetails" rows="4" placeholder="Describe your proposal and how you can help..." required></textarea>
@@ -321,14 +409,15 @@
             const requester = btn.getAttribute('data-requester') || '';
             const title = btn.getAttribute('data-title') || '';
             const skill = btn.getAttribute('data-skill') || '';
+            const skillId = btn.getAttribute('data-skill-id') || '';
 
             // Debug output to the console so you can inspect values in DevTools
             try { console.log('openProposalModalFromButton', { queryId, requester, title, skill }); } catch(e){}
 
-            openProposalModal(queryId, requester, title, skill);
+            openProposalModal(queryId, requester, title, skill, skillId);
         }
 
-        function openProposalModal(queryId, requesterName, title, skill) {
+        function openProposalModal(queryId, requesterName, title, skill, skillId) {
             // Defensive fallbacks
             const q = queryId || '';
             const r = requesterName || 'Unknown';
@@ -344,6 +433,18 @@
             const qInput = document.getElementById('queryId');
             if (qInput) qInput.value = q;
 
+            // set requested skill id into the hidden/selection control
+            const reqSel = document.getElementById('modalRequestedSkill');
+            if (reqSel) {
+                reqSel.innerHTML = '';
+                const opt = document.createElement('option');
+                opt.value = skillId || '';
+                opt.textContent = s;
+                reqSel.appendChild(opt);
+                // ensure it's selected
+                reqSel.value = skillId || '';
+            }
+
             const details = document.getElementById('requestDetails');
             if (details) {
                 // Build text nodes to avoid accidental HTML parsing issues
@@ -358,6 +459,40 @@
                 details.appendChild(p2);
                 details.appendChild(p3);
             }
+
+            // populate poster-skill-dependent selects
+                try {
+                // poster skills -> modalWantSkill (what you want from requester)
+                const wantSel = document.getElementById('modalWantSkill');
+                if (wantSel) {
+                    wantSel.innerHTML = '<option value="">-- choose skill you want from requester (or volunteer) --</option>';
+                    const posterSelect = document.querySelector('.poster-skills[data-query-id="' + q + '"]');
+                    if (posterSelect) {
+                        Array.from(posterSelect.options).forEach(opt => {
+                            const o = document.createElement('option');
+                            o.value = opt.value;
+                            o.textContent = opt.textContent;
+                            wantSel.appendChild(o);
+                        });
+                        if (wantSel.options.length > 1) wantSel.selectedIndex = 1;
+                    }
+                        // volunteer handling: if checked, disable/clear the wantSel
+                    const volCb = document.getElementById('modalVolunteer');
+                    if (volCb && volCb.checked) {
+                        wantSel.disabled = true;
+                        wantSel.value = '';
+                    } else {
+                        wantSel.disabled = false;
+                    }
+                    // mirror into hidden input so value is submitted even if select is disabled
+                    const hidden = document.getElementById('wantedSkillHidden');
+                    if (hidden) hidden.value = wantSel.value || '';
+                    // keep hidden updated when user changes selection
+                    wantSel.addEventListener('change', function(){ if (hidden) hidden.value = wantSel.value || ''; });
+                }
+
+                // no offered-skill select in the modal (we only record what you want from requester)
+            } catch (e) { console.log('populate modal skills failed', e); }
         }
 
         // Small client-side escaper for safe insertion into innerHTML
@@ -374,6 +509,25 @@
         function closeProposalModal() {
             document.getElementById('proposalModal').style.display = 'none';
             document.getElementById('proposalForm').reset();
+            const reqSel = document.getElementById('modalRequestedSkill'); if (reqSel) reqSel.innerHTML = '<option value="">-- skill --</option>';
+            // clear hidden mirror so stale values are not submitted
+            const hidden = document.getElementById('wantedSkillHidden'); if (hidden) hidden.value = '';
+        }
+
+        function onModalVolunteerToggle(cb) {
+            // When volunteering, you are not requesting a skill in exchange from the requester,
+            // so disable/clear the 'want' select which lists poster skills. Keep your offered-skill enabled.
+            const wantSel = document.getElementById('modalWantSkill');
+            if (wantSel) {
+                if (cb.checked) {
+                    wantSel.disabled = true;
+                    wantSel.value = '';
+                    // mirror the cleared value into the hidden input as well
+                    const hidden = document.getElementById('wantedSkillHidden'); if (hidden) hidden.value = '';
+                } else {
+                    wantSel.disabled = false;
+                }
+            }
         }
 
         // Close modal when clicking outside

@@ -92,50 +92,105 @@ public class SkillDAO {
 
     // Fetch requests posted by user with incoming bids details
     public static List<RequestWithBids> getRequestsWithBids(int requesterId) throws SQLException {
-        String sql = "SELECT q.QueryID, q.Title, q.Description, b.BidID, b.ProviderID, b.RequestedSkillID, b.OfferedSkillID, b.Volunteer, b.BidDetails, b.Status, u.Username, sReq.SkillName AS RequestedSkillName, sOff.SkillName AS OfferedSkillName "
-                + "FROM Queries q LEFT JOIN Bids b ON q.QueryID = b.QueryID "
-                + "LEFT JOIN Users u ON b.ProviderID = u.UserID "
-                + "LEFT JOIN Skills sReq ON b.RequestedSkillID = sReq.SkillID "
-                + "LEFT JOIN Skills sOff ON b.OfferedSkillID = sOff.SkillID "
-                + "WHERE q.RequesterID = ? ORDER BY q.QueryID DESC, b.BidID DESC";
+        String sqlWithVolunteer = "SELECT q.QueryID, q.Title, q.Description, b.BidID, b.ProviderID, b.RequestedSkillID, b.WantedSkillID, b.OfferedSkillID, b.Volunteer, b.BidDetails, b.Status, u.Username, sReq.SkillName AS RequestedSkillName, sWant.SkillName AS WantedSkillName, sOff.SkillName AS OfferedSkillName "
+            + "FROM Queries q LEFT JOIN Bids b ON q.QueryID = b.QueryID "
+            + "LEFT JOIN Users u ON b.ProviderID = u.UserID "
+            + "LEFT JOIN Skills sReq ON b.RequestedSkillID = sReq.SkillID "
+            + "LEFT JOIN Skills sWant ON b.WantedSkillID = sWant.SkillID "
+            + "LEFT JOIN Skills sOff ON b.OfferedSkillID = sOff.SkillID "
+            + "WHERE q.RequesterID = ? ORDER BY q.QueryID DESC, b.BidID DESC";
+
+        String sqlWithoutVolunteer = "SELECT q.QueryID, q.Title, q.Description, b.BidID, b.ProviderID, b.RequestedSkillID, b.WantedSkillID, b.OfferedSkillID, b.BidDetails, b.Status, u.Username, sReq.SkillName AS RequestedSkillName, sWant.SkillName AS WantedSkillName, sOff.SkillName AS OfferedSkillName "
+            + "FROM Queries q LEFT JOIN Bids b ON q.QueryID = b.QueryID "
+            + "LEFT JOIN Users u ON b.ProviderID = u.UserID "
+            + "LEFT JOIN Skills sReq ON b.RequestedSkillID = sReq.SkillID "
+            + "LEFT JOIN Skills sWant ON b.WantedSkillID = sWant.SkillID "
+            + "LEFT JOIN Skills sOff ON b.OfferedSkillID = sOff.SkillID "
+            + "WHERE q.RequesterID = ? ORDER BY q.QueryID DESC, b.BidID DESC";
 
         List<RequestWithBids> results = new ArrayList<>();
-        try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS);
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, requesterId);
-            try (ResultSet rs = ps.executeQuery()) {
-                int lastQueryId = -1;
-                RequestWithBids current = null;
-                while (rs.next()) {
-                    int qid = rs.getInt("QueryID");
-                    if (current == null || qid != lastQueryId) {
-                        current = new RequestWithBids();
-                        current.setQueryId(qid);
-                        current.setTitle(rs.getString("Title"));
-                        current.setDescription(rs.getString("Description"));
-                        current.setBids(new ArrayList<>());
-                        results.add(current);
-                        lastQueryId = qid;
+        try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS)) {
+            // Try the regular query first (expects Bids.Volunteer to exist)
+            try (PreparedStatement ps = con.prepareStatement(sqlWithVolunteer)) {
+                ps.setInt(1, requesterId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    int lastQueryId = -1;
+                    RequestWithBids current = null;
+                    while (rs.next()) {
+                        int qid = rs.getInt("QueryID");
+                        if (current == null || qid != lastQueryId) {
+                            current = new RequestWithBids();
+                            current.setQueryId(qid);
+                            current.setTitle(rs.getString("Title"));
+                            current.setDescription(rs.getString("Description"));
+                            current.setBids(new ArrayList<>());
+                            results.add(current);
+                            lastQueryId = qid;
+                        }
+                        int bidId = rs.getInt("BidID");
+                        if (bidId > 0) {
+                            BidSummary b = new BidSummary();
+                            b.setBidId(bidId);
+                            b.setProviderId(rs.getInt("ProviderID"));
+                            b.setProviderName(rs.getString("Username"));
+                            b.setRequestedSkillId(rs.getInt("RequestedSkillID"));
+                            try { b.setWantedSkillId(rs.getInt("WantedSkillID")); } catch (Exception ignore) { }
+                            b.setOfferedSkillId(rs.getInt("OfferedSkillID"));
+                            b.setVolunteer(rs.getBoolean("Volunteer"));
+                            b.setMessage(rs.getString("BidDetails"));
+                            b.setStatus(rs.getString("Status"));
+                            b.setRequestedSkillName(rs.getString("RequestedSkillName"));
+                            b.setOfferedSkillName(rs.getString("OfferedSkillName"));
+                            current.getBids().add(b);
+                        }
                     }
-                    int bidId = rs.getInt("BidID");
-                    if (bidId > 0) {
-                        BidSummary b = new BidSummary();
-                        b.setBidId(bidId);
-                        b.setProviderId(rs.getInt("ProviderID"));
-                        b.setProviderName(rs.getString("Username"));
-                        b.setRequestedSkillId(rs.getInt("RequestedSkillID"));
-                        b.setOfferedSkillId(rs.getInt("OfferedSkillID"));
-                        b.setVolunteer(rs.getBoolean("Volunteer"));
-                        b.setMessage(rs.getString("BidDetails"));
-                        b.setStatus(rs.getString("Status"));
-                        b.setRequestedSkillName(rs.getString("RequestedSkillName"));
-                        b.setOfferedSkillName(rs.getString("OfferedSkillName"));
-                        current.getBids().add(b);
+                    return results;
+                }
+            } catch (SQLException ex) {
+                // If Volunteer column doesn't exist, fall back to a query without it
+                String msg = ex.getMessage() == null ? "" : ex.getMessage();
+                if (msg.contains("Unknown column 'b.Volunteer'") || msg.contains("Unknown column: b.Volunteer")) {
+                    try (PreparedStatement ps2 = con.prepareStatement(sqlWithoutVolunteer)) {
+                        ps2.setInt(1, requesterId);
+                        try (ResultSet rs = ps2.executeQuery()) {
+                            int lastQueryId = -1;
+                            RequestWithBids current = null;
+                            while (rs.next()) {
+                                int qid = rs.getInt("QueryID");
+                                if (current == null || qid != lastQueryId) {
+                                    current = new RequestWithBids();
+                                    current.setQueryId(qid);
+                                    current.setTitle(rs.getString("Title"));
+                                    current.setDescription(rs.getString("Description"));
+                                    current.setBids(new ArrayList<>());
+                                    results.add(current);
+                                    lastQueryId = qid;
+                                }
+                                int bidId = rs.getInt("BidID");
+                                if (bidId > 0) {
+                                    BidSummary b = new BidSummary();
+                                    b.setBidId(bidId);
+                                    b.setProviderId(rs.getInt("ProviderID"));
+                                    b.setProviderName(rs.getString("Username"));
+                                    b.setRequestedSkillId(rs.getInt("RequestedSkillID"));
+                                    try { b.setWantedSkillId(rs.getInt("WantedSkillID")); } catch (Exception ignore) { }
+                                    b.setOfferedSkillId(rs.getInt("OfferedSkillID"));
+                                    // Volunteer column missing -> default false
+                                    b.setVolunteer(false);
+                                    b.setMessage(rs.getString("BidDetails"));
+                                    b.setStatus(rs.getString("Status"));
+                                    b.setRequestedSkillName(rs.getString("RequestedSkillName"));
+                                    b.setOfferedSkillName(rs.getString("OfferedSkillName"));
+                                    current.getBids().add(b);
+                                }
+                            }
+                            return results;
+                        }
                     }
                 }
+                throw ex;
             }
         }
-        return results;
     }
 
     // Fetch bids created by provider
@@ -231,11 +286,13 @@ public class SkillDAO {
         private int providerId;
         private String providerName;
         private int requestedSkillId;
+        private int wantedSkillId;
         private int offeredSkillId;
         private boolean volunteer;
         private String message;
         private String status;
         private String requestedSkillName;
+        private String wantedSkillName;
         private String offeredSkillName;
         // getters/setters omitted for brevity — generate
         public int getBidId() { return bidId; }
@@ -246,6 +303,8 @@ public class SkillDAO {
         public void setProviderName(String providerName) { this.providerName = providerName; }
         public int getRequestedSkillId() { return requestedSkillId; }
         public void setRequestedSkillId(int requestedSkillId) { this.requestedSkillId = requestedSkillId; }
+        public int getWantedSkillId() { return wantedSkillId; }
+        public void setWantedSkillId(int wantedSkillId) { this.wantedSkillId = wantedSkillId; }
         public int getOfferedSkillId() { return offeredSkillId; }
         public void setOfferedSkillId(int offeredSkillId) { this.offeredSkillId = offeredSkillId; }
         public boolean isVolunteer() { return volunteer; }
@@ -256,6 +315,8 @@ public class SkillDAO {
         public void setStatus(String status) { this.status = status; }
         public String getRequestedSkillName() { return requestedSkillName; }
         public void setRequestedSkillName(String requestedSkillName) { this.requestedSkillName = requestedSkillName; }
+        public String getWantedSkillName() { return wantedSkillName; }
+        public void setWantedSkillName(String wantedSkillName) { this.wantedSkillName = wantedSkillName; }
         public String getOfferedSkillName() { return offeredSkillName; }
         public void setOfferedSkillName(String offeredSkillName) { this.offeredSkillName = offeredSkillName; }
     }

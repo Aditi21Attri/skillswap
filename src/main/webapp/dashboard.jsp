@@ -68,10 +68,10 @@
                     <i class="fas fa-list"></i>
                     My Requests
                 </a>
-                <a href="active-swaps" class="tab-trigger" data-tab="active-swaps">
+                <!-- <a href="active-swaps" class="tab-trigger" data-tab="active-swaps">
                     <i class="fas fa-bolt"></i>
                     Active Swaps
-                </a>
+                </a> -->
                 <a href="messages.jsp" class="tab-trigger" data-tab="messages">
                     <i class="fas fa-comments"></i>
                     Messages
