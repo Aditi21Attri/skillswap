@@ -1,0 +1,14 @@
+-- Create reviews table to store per-transaction reviews
+CREATE TABLE IF NOT EXISTS Reviews (
+  ReviewID INT AUTO_INCREMENT PRIMARY KEY,
+  TransactionID INT NOT NULL,
+  ReviewerID INT NOT NULL,
+  RevieweeID INT NOT NULL,
+  Rating TINYINT NULL,
+  Comments TEXT,
+  Skipped TINYINT(1) NOT NULL DEFAULT 0,
+  CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_reviews_transaction FOREIGN KEY (TransactionID) REFERENCES Transactions(TransactionID) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_reviews_reviewer FOREIGN KEY (ReviewerID) REFERENCES Users(UserID) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_reviews_reviewee FOREIGN KEY (RevieweeID) REFERENCES Users(UserID) ON DELETE CASCADE ON UPDATE CASCADE
+);

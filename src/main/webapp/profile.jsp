@@ -222,6 +222,45 @@
             </ul>
         </div>
 
+        <!-- REVIEWS -->
+        <div class="section-card">
+            <h3>Reviews</h3>
+            <div>
+                <%
+                    try {
+                        java.util.List<java.util.Map<String,Object>> reviews = com.skill.ReviewDAO.getReviewsForUser(profile.getUserId());
+                        if (reviews == null || reviews.isEmpty()) {
+                %>
+                    <div class="meta">No reviews yet.</div>
+                <% } else {
+                        for (java.util.Map<String,Object> r : reviews) {
+                %>
+                    <div style="margin-bottom:12px;">
+                        <strong><%= r.get("reviewerName") %></strong>
+                        <span class="meta"> — <%= r.get("createdAt") %></span>
+                        <div style="margin-top:4px; color:#111;">
+                            <% if ((Boolean)r.get("skipped")) { %>
+                                <em class="meta">Reviewer skipped leaving feedback.</em>
+                            <% } else { %>
+                                <% if (r.get("rating") != null) { %>
+                                    <div>Rating: <strong><%= r.get("rating") %></strong></div>
+                                <% } %>
+                                <% if (r.get("comments") != null && !"".equals(r.get("comments"))) { %>
+                                    <div style="margin-top:6px;"><%= r.get("comments") %></div>
+                                <% } %>
+                            <% } %>
+                        </div>
+                    </div>
+                <%   }
+                        }
+                    } catch (Exception e) {
+                        out.println("<div class=\"meta\">Unable to load reviews.</div>");
+                        e.printStackTrace();
+                    }
+                %>
+            </div>
+        </div>
+
     </div>
 </div>
 

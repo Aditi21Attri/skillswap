@@ -296,12 +296,9 @@
                                                         <span class="skill-badge"><%= transaction.get("userRole") %></span>
                                                     </td>
                                                     <td>
-                                                        <form action="CompleteTransaction" method="post" style="display: inline;">
-                                                            <input type="hidden" name="transactionId" value="<%= transaction.get("transactionId") %>">
-                                                            <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Mark this exchange as completed?')">
-                                                                <i class="fas fa-check-circle"></i> Mark Completed
-                                                            </button>
-                                                        </form>
+                                                        <a class="btn btn-primary btn-sm" href="review.jsp?transactionId=<%= transaction.get("transactionId") %>">
+                                                            <i class="fas fa-check-circle"></i> Mark Completed
+                                                        </a>
                                                     </td>
                                                 </tr>
                                             <% 

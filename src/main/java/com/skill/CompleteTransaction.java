@@ -31,8 +31,59 @@ public class CompleteTransaction extends HttpServlet {
 
         String transactionIdStr = request.getParameter("transactionId");
 
+        if (transactionIdStr == null) {
+            request.setAttribute("error", "Missing transaction id.");
+            request.getRequestDispatcher("exchanges.jsp").forward(request, response);
+            return;
+        }
+
         try {
             int transactionId = Integer.parseInt(transactionIdStr);
+
+            // If the request is the initial 'mark completed' action, show the review form first
+            if (request.getParameter("reviewSubmitted") == null && request.getParameter("skipReview") == null) {
+                // Forward to review form where user can submit rating/comments or skip
+                request.setAttribute("transactionId", transactionId);
+                request.getRequestDispatcher("review.jsp").forward(request, response);
+                return;
+            }
+
+            // At this point reviewSubmitted or skipReview is present — persist review (if any) then mark completed
+            int reviewerId = (Integer) request.getSession().getAttribute("userId");
+
+            // determine reviewee (the other participant)
+            int revieweeId = -1;
+            try (Connection con = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS);
+                 PreparedStatement ps = con.prepareStatement("SELECT RequesterID, ProviderID FROM Transactions WHERE TransactionID = ?")) {
+                ps.setInt(1, transactionId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        int requester = rs.getInt("RequesterID");
+                        int provider = rs.getInt("ProviderID");
+                        revieweeId = (reviewerId == requester) ? provider : requester;
+                    }
+                }
+            }
+
+            // Insert review if submitted or create skipped review marker
+            try {
+                if (request.getParameter("skipReview") != null) {
+                    // create a skipped review row so we know reviewer declined
+                    com.skill.ReviewDAO.insertReview(transactionId, reviewerId, revieweeId, null, null, true);
+                } else {
+                    String ratingStr = request.getParameter("rating");
+                    Integer rating = null;
+                    if (ratingStr != null && !ratingStr.trim().isEmpty()) {
+                        try { rating = Integer.parseInt(ratingStr); } catch (NumberFormatException ignored) {}
+                    }
+                    String comments = request.getParameter("comments");
+                    com.skill.ReviewDAO.insertReview(transactionId, reviewerId, revieweeId, rating, comments, false);
+                }
+            } catch (Exception re) {
+                // log but continue to complete the transaction
+                re.printStackTrace();
+            }
+
             boolean isCompleted = completeTransaction(transactionId);
 
             if (isCompleted) {
